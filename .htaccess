@@ -1,0 +1,230 @@
+# Taply.life .htaccess Dosyası
+# Apache 2.4+ için optimize edilmiş
+
+# URL Rewriting Aktif Et
+RewriteEngine On
+
+# Base directory ayarla (gerekirse /taply/ olarak değiştirin)
+# RewriteBase /taply/
+
+# HTTPS yönlendirmesi (production için)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# www'suz domain'e yönlendir (production için)
+# RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+# RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# Statik dosyalar için özel kurallar
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf|zip)$ [NC]
+RewriteRule ^ - [L]
+
+# Klasör ve dosya varsa direkt erişim
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Tüm istekleri index.php'ye yönlendir
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Güvenlik Ayarları
+# =================
+
+# Hassas dosyalara erişimi engelle
+<Files "*.sql">
+    Require all denied
+</Files>
+
+<Files "*.log">
+    Require all denied
+</Files>
+
+<Files "config.php">
+    Require all denied
+</Files>
+
+# Core klasörüne direkt erişimi engelle
+<IfModule mod_rewrite.c>
+    RewriteRule ^core/ - [F,L]
+</IfModule>
+
+# Backup dosyalarına erişimi engelle
+<FilesMatch "\.(bak|backup|old|tmp|~)$">
+    Require all denied
+</FilesMatch>
+
+# .htaccess ve .htpasswd dosyalarını gizle
+<Files ~ "^\.ht">
+    Require all denied
+</Files>
+
+# Server bilgilerini gizle
+ServerSignature Off
+
+# PHP hata mesajlarını gizle (production için)
+# php_flag display_errors off
+# php_flag log_errors on
+
+# Güvenlik Başlıkları
+# ==================
+
+<IfModule mod_headers.c>
+    # XSS koruması
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Content Security Policy (ihtiyaç duyarsanız aktif edin)
+    # Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
+</IfModule>
+
+# Cache Kontrol
+# =============
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # CSS ve JavaScript dosyaları
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # Resim dosyaları
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+    
+    # Font dosyaları
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    
+    # HTML dosyaları
+    ExpiresByType text/html "access plus 1 hour"
+    
+    # JSON ve XML
+    ExpiresByType application/json "access plus 1 hour"
+    ExpiresByType application/xml "access plus 1 hour"
+    ExpiresByType text/xml "access plus 1 hour"
+</IfModule>
+
+# GZIP Sıkıştırma
+# ===============
+
+<IfModule mod_deflate.c>
+    # HTML, CSS, JavaScript, Text, XML ve fontları sıkıştır
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/font-woff
+    AddOutputFilterByType DEFLATE application/font-woff2
+    AddOutputFilterByType DEFLATE font/woff
+    AddOutputFilterByType DEFLATE font/woff2
+    
+    # Eski tarayıcılar için
+    BrowserMatch ^Mozilla/4 gzip-only-text/html
+    BrowserMatch ^Mozilla/4\.0[678] no-gzip
+    BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+</IfModule>
+
+# Performans Optimizasyonları
+# ===========================
+
+# ETags'i kapat (küçük siteler için)
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+FileETag None
+
+# KeepAlive ayarları (server.conf'ta da olabilir)
+# KeepAliveTimeout 2
+# MaxKeepAliveRequests 10
+
+# Dosya boyutu limitleri
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 30
+    php_value max_input_time 30
+    php_value memory_limit 256M
+</IfModule>
+
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 30
+    php_value max_input_time 30
+    php_value memory_limit 256M
+</IfModule>
+
+# Error Pages (Özel hata sayfaları)
+# =================================
+
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php
+ErrorDocument 500 /500.php
+
+# Mime Types (eksik olanlar için)
+# ===============================
+
+<IfModule mod_mime.c>
+    AddType application/font-woff .woff
+    AddType application/font-woff2 .woff2
+    AddType image/svg+xml .svg
+    AddType text/css .css
+    AddType application/javascript .js
+</IfModule>
+
+# Directory Browsing'i Kapat
+# ==========================
+
+Options -Indexes
+
+# Sembolik linkleri takip et
+Options +FollowSymLinks
+
+# MultiViews'i kapat
+Options -MultiViews
+
+# Hotlinking Koruması (isteğe bağlı)
+# ==================================
+
+# RewriteCond %{HTTP_REFERER} !^$
+# RewriteCond %{HTTP_REFERER} !^https?://(www\.)?taply\.life [NC]
+# RewriteRule \.(jpg|jpeg|png|gif|svg)$ - [F]
+
+# Rate Limiting (isteğe bağlı - mod_evasive gerekli)
+# =================================================
+
+# <IfModule mod_evasive24.c>
+#     DOSHashTableSize    10000
+#     DOSPageCount        2
+#     DOSPageInterval     1
+#     DOSSiteCount        50
+#     DOSSiteInterval     1
+#     DOSBlockingPeriod   600
+# </IfModule>
+
+# Son Notlar
+# ==========
+
+# Bu .htaccess dosyası Taply.life için optimize edilmiştir
+# Production'a geçerken SSL ve domain yönlendirmelerini aktif edin
+# Server konfigürasyonuna göre bazı ayarları değiştirmeniz gerekebilir
